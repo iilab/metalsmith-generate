@@ -1,3 +1,33 @@
+var path = require('path');
+
+function getDescendantProp(obj, desc) {
+    var arr = desc.split(".");
+    while(arr.length && (obj = obj[arr.shift()]));
+    return obj;
+}
+
+function slugify(text)
+{
+  return text.toString().toLowerCase()
+    .replace(/\s+/g, '-')           // Replace spaces with -
+    .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+    .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+    .replace(/^-+/, '')             // Trim - from start of text
+    .replace(/-+$/, '');            // Trim - from end of text
+}
+
+
+function keyify(text)
+{
+  return text.toString().toLowerCase()
+    .replace(/\s+/g, '_')           // Replace spaces with -
+    .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+    .replace(/\-/g, '_')         // Replace multiple - with single -
+    .replace(/\-\-+/g, '_')         // Replace multiple - with single -
+    .replace(/^-+/, '')             // Trim - from start of text
+    .replace(/-+$/, '');            // Trim - from end of text
+}
+
 /**
  * Creates files at specified path with their metadata
  *
@@ -7,24 +37,59 @@
  *
  * @return {Function}
  */
-module.exports = function (generated_files) {
-    var generated_files = generated_files || [];
+module.exports = function (rules) {
+    var rules = rules || [];
 
     return function (files, metalsmith, done) {
+        setImmediate(done);
 
-        generated_files.forEach(function (generated_file) {
-            var path = generated_file.path;
-            if (!files[path]) files[path] = {}
-            if (generated_file.contents) {
-                files[path].contents = new Buffer(generated_file.contents);
+        rules.forEach(function (rule) {
+            var type = rule.type || "file";
+            var slug = rule.slugify || false;
+                        
+            if (type =="file") {
+                var file_path = rule.path
+
+                if (!files[file_path]) files[file_path] = {}
+
+                if (rule.contents) {
+                    files[file_path].contents = new Buffer(rule.contents);
+                } else {
+                    files[file_path].contents = new Buffer("");
+                }
+
+                if (rule.metadata) {
+                    Object.assign(files[file_path], rule.metadata)
+                }
+
+            } else if (type =="metadata") {
+                var metadata = getDescendantProp(metalsmith.metadata(), rule.src);
+                metadata.forEach(function(item) {
+                    if (item[rule.name]) {
+                        var slug = slugify(item[rule.name])
+                        var file_path = path.join(rule.path, slug +  rule.ext)
+                        files[file_path] = {
+                          contents    : item[rule.contents], // Contents needs to be defined beacuse other plugins expect it
+                        };
+                        if (slug) {
+                          Object.keys(item).forEach(function(k, v) {
+                            if (k !== keyify(k)) {
+                              Object.defineProperty(item, keyify(k),
+                                  Object.getOwnPropertyDescriptor(item, k));
+                              delete item[k];
+                            }
+                          })
+                        }
+                        
+                        Object.assign(files[file_path], item, rule.metadata)
+                    }
+                })
+
+
             } else {
-                files[path].contents = new Buffer("");
-            }
-            if (generated_file.metadata) {
-                Object.assign(files[path], generated_file.metadata)
+                done("Error: Wrong type in metalsmith-generate rules")
             }
         });
 
-        done();
     };
 };

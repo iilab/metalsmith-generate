@@ -34,6 +34,15 @@ npm install metalsmith-generate
         "contents": "<xml>some_atom_xml</xml>"
       }
     }
+    ,
+      {
+        "type": "metadata",
+        "src": "tools.data",
+        "contents": "Teaser",
+        "path": "field_name",
+        "ext": ".md"
+      }
+    }
   }
 }
 ```
