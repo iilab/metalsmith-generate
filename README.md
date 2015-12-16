@@ -31,7 +31,7 @@ npm install metalsmith-generate
     ,
       {
         "path": "/rss.xml"
-        "contents": "<xml>some_atom_xml</xml>"
+        "contents": "path/to/file.ext"
       }
     }
     ,
