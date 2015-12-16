@@ -1,4 +1,6 @@
 var path = require('path');
+var fs = require('fs');
+
 
 function getDescendantProp(obj, desc) {
     var arr = desc.split(".");
@@ -65,23 +67,30 @@ module.exports = function (rules) {
             } else if (type =="metadata") {
                 var metadata = getDescendantProp(metalsmith.metadata(), rule.src);
                 metadata.forEach(function(item) {
-                    if (item[rule.name]) {
-                        var slug = slugify(item[rule.name])
-                        var file_path = path.join(rule.path, slug +  rule.ext)
-                        files[file_path] = {
-                          contents    : item[rule.contents], // Contents needs to be defined beacuse other plugins expect it
-                        };
-                        if (slug) {
-                          Object.keys(item).forEach(function(k, v) {
-                            if (k !== keyify(k)) {
-                              Object.defineProperty(item, keyify(k),
-                                  Object.getOwnPropertyDescriptor(item, k));
-                              delete item[k];
-                            }
-                          })
-                        }
+                  if (item[rule.name]) {
+                      var slug = slugify(item[rule.name])
+                      var file_path = path.join(rule.path, slug +  rule.ext)
+
+                      var buffer = fs.readFileSync(rule.contents);
+
+
+                      files[file_path] = {
+                        title       : item[rule.name],
+                        contents    : buffer, // Contents needs to be defined beacuse other plugins expect it
+                      };
+
+                      if (slug) {
+                        Object.keys(item).forEach(function(k, v) {
+                          if (k !== keyify(k)) {
+                            Object.defineProperty(item, keyify(k),
+                                Object.getOwnPropertyDescriptor(item, k));
+                            delete item[k];
+                          }
+                        })
+                      }
+                      
+                      Object.assign(files[file_path], item, rule.metadata)
                         
-                        Object.assign(files[file_path], item, rule.metadata)
                     }
                 })
 
@@ -89,6 +98,7 @@ module.exports = function (rules) {
             } else {
                 done("Error: Wrong type in metalsmith-generate rules")
             }
+
         });
 
     };
